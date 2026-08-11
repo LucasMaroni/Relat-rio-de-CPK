@@ -1,0 +1,57 @@
+name: Publicar relatório de CPK
+
+# Roda automaticamente sempre que você atualizar as planilhas (pasta dados/),
+# e também pode ser disparado manualmente na aba "Actions".
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'dados/**'
+      - 'template.html'
+      - 'gerar_relatorio.py'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Baixar o repositório
+        uses: actions/checkout@v4
+
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependências
+        run: pip install pandas openpyxl
+
+      - name: Gerar o relatório (index.html)
+        run: python gerar_relatorio.py
+
+      - name: Preparar site
+        run: |
+          mkdir -p _site
+          cp index.html _site/index.html
+
+      - name: Enviar artefato
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Publicar no GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
